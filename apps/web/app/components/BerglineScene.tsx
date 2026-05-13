@@ -32,6 +32,7 @@ const sceneScale = 0.028;
 const groundY = -0.82;
 const siteLineY = groundY + 0.005;
 const cameraTarget = new Vector3(-0.05, -0.6, 0.1);
+const endpointMarkerSize = 0.08 / 3;
 const origin = landmarkCoordinates.door;
 const originLatitudeRadians = (origin[1] * Math.PI) / 180;
 const mappedQueuePath = queuePath.map((coordinate) => projectCoordinate(coordinate));
@@ -41,12 +42,6 @@ const visibleQueueNodes = mappedQueuePath.slice(
   0,
   Math.max(2, Math.ceil(mappedQueuePath.length * Math.min(Math.max(queueProgress, 0), 1))),
 );
-const landmarkPositions = [
-  { key: "door", point: projectCoordinate(landmarkCoordinates.door), radius: 0.08 },
-  { key: "snake", point: projectCoordinate(landmarkCoordinates.snakeStart), radius: 0.05 },
-  { key: "metro", point: projectCoordinate(landmarkCoordinates.metro), radius: 0.08 },
-];
-
 function projectCoordinate([longitude, latitude]: GeoCoordinate, y = groundY): ScenePoint {
   const eastMeters =
     (longitude - origin[0]) * metersPerDegreeAtEquator * Math.cos(originLatitudeRadians);
@@ -181,32 +176,10 @@ function PanControls() {
 
 function QueueNodes({ visibleQueueNodes }: { visibleQueueNodes: ScenePoint[] }) {
   return (
-    <>
-      {visibleQueueNodes.slice(1, -1).map((point) => (
-        <mesh key={point.join(":")} position={point}>
-          <sphereGeometry args={[0.035, 14, 14]} />
-          <meshBasicMaterial color="#69ffdf" />
-        </mesh>
-      ))}
-
-      <mesh position={visibleQueueNodes[visibleQueueNodes.length - 1]}>
-        <boxGeometry args={[0.1, 0.1, 0.1]} />
-        <meshBasicMaterial color="#69ffdf" />
-      </mesh>
-    </>
-  );
-}
-
-function LandmarkMarkers() {
-  return (
-    <>
-      {landmarkPositions.map(({ key, point, radius }) => (
-        <mesh key={key} position={point}>
-          <sphereGeometry args={[radius, 18, 18]} />
-          <meshBasicMaterial color={key === "door" ? "#86ffe7" : "#d8fff7"} />
-        </mesh>
-      ))}
-    </>
+    <mesh position={visibleQueueNodes[visibleQueueNodes.length - 1]}>
+      <boxGeometry args={[endpointMarkerSize, endpointMarkerSize, endpointMarkerSize]} />
+      <meshBasicMaterial color="#69ffdf" />
+    </mesh>
   );
 }
 
@@ -284,7 +257,6 @@ function SceneGeometry() {
           <meshBasicMaterial color="#f3fffe" transparent opacity={0.42} />
         </mesh>
 
-        <LandmarkMarkers />
         <QueueNodes visibleQueueNodes={visibleQueueNodes} />
 
         <gridHelper args={[10, 22, "#0f3b37", "#061817"]} position={[-1.6, -0.9, 3.2]} />
