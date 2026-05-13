@@ -1,0 +1,15 @@
+name: blocking-checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  blocking-checks:
+    name: blocking-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: echo "Placeholder for linting, tests, and build checks."
