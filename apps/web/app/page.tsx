@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { BerglineScene } from "./components/BerglineScene";
 
 export default function Home() {
@@ -23,6 +25,10 @@ export default function Home() {
           <span>Give feedback</span>
           <small>Opens email</small>
         </a>
+        <nav className="legal-links" aria-label="Legal links">
+          <Link href="/impressum">Impressum</Link>
+          <Link href="/datenschutz">Datenschutz</Link>
+        </nav>
       </div>
     </main>
   );
