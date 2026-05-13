@@ -18,6 +18,7 @@ type ScenePoint = [x: number, y: number, z: number];
 const metersPerDegreeAtEquator = 111_320;
 const sceneScale = 0.028;
 const groundY = -0.82;
+const roadsY = groundY + 0.005;
 const origin = landmarkCoordinates.door;
 const originLatitudeRadians = (origin[1] * Math.PI) / 180;
 const mappedQueuePath = queuePath.map((coordinate) => projectCoordinate(coordinate));
@@ -125,8 +126,8 @@ function LandmarkMarkers() {
 function SceneGeometry() {
   const queueGeometries = useMemo(
     () => ({
-      queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.026, 180),
-      queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.009, 180),
+      queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.008, 180),
+      queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.003, 180),
     }),
     [],
   );
@@ -143,7 +144,7 @@ function SceneGeometry() {
     () =>
       siteLines.map((line) => ({
         geometry: getLineSegmentsGeometry(
-          line.coordinates.map((coordinate) => projectCoordinate(coordinate, groundY - 0.01)),
+          line.coordinates.map((coordinate) => projectCoordinate(coordinate, roadsY)),
         ),
         name: line.name,
         tone: line.tone,
@@ -163,7 +164,7 @@ function SceneGeometry() {
             <lineBasicMaterial
               color={tone === "road" ? "#9aa7a6" : "#c4cfcc"}
               transparent
-              opacity={tone === "road" ? 0.14 : 0.24}
+              opacity={tone === "road" ? 0.78 : 0.88}
             />
           </lineSegments>
         ))}
@@ -197,12 +198,12 @@ function SceneGeometry() {
 export function BerglineScene() {
   return (
     <Canvas
-      camera={{ position: [1.35, 10.4, 13.4], fov: 52 }}
+      camera={{ position: [0.55, 6.8, 6.7], fov: 43 }}
       dpr={[1, 1.7]}
       frameloop="demand"
       gl={{ antialias: true }}
       onCreated={({ camera }) => {
-        camera.lookAt(-0.55, -0.45, 2.75);
+        camera.lookAt(-0.05, -0.6, 0.1);
       }}
     >
       <SceneGeometry />

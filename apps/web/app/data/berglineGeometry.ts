@@ -13,7 +13,7 @@ export type SiteLine = {
   tone: "fence" | "road";
 };
 
-const buildingHeight = 1.18;
+const buildingHeight = 0.59;
 const secondaryBuildingHeight = buildingHeight / 2;
 const kioskHeight = secondaryBuildingHeight / 2;
 const concreteBlockHeight = kioskHeight / 2;
