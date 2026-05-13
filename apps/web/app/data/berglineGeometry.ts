@@ -13,6 +13,13 @@ export type SiteLine = {
   tone: "fence" | "road";
 };
 
+export type QueueKeyPoint = {
+  id: string;
+  label: string;
+  coordinate: GeoCoordinate;
+  percent: number;
+};
+
 const buildingHeight = 0.59;
 const secondaryBuildingHeight = buildingHeight / 2;
 const kioskHeight = secondaryBuildingHeight / 2;
@@ -244,6 +251,53 @@ export const landmarkCoordinates = {
   middleConcreteSeat: [13.4422991, 52.5106141],
   magicCube: [13.4422172, 52.5105255],
   openKiosk: [13.4420793, 52.5104634],
+  behindKiosk: [13.441944, 52.5103027],
   wriezenerKarree: [13.4417151, 52.5100063],
   metro: queuePath[queuePath.length - 1],
 } satisfies Record<string, GeoCoordinate>;
+
+const queueKeyPointSource = [
+  { id: "door", label: "Door", coordinate: landmarkCoordinates.door },
+  { id: "no-queue", label: "No queue", coordinate: landmarkCoordinates.noQueue },
+  { id: "snake-start", label: "Start of snake", coordinate: landmarkCoordinates.snakeStart },
+  { id: "concrete-box", label: "Concrete box", coordinate: landmarkCoordinates.concreteBlock },
+  {
+    id: "middle-concrete-seat",
+    label: "Middle concrete seat",
+    coordinate: landmarkCoordinates.middleConcreteSeat,
+  },
+  {
+    id: "magic-cube",
+    label: "Magic cube / closed kiosk",
+    coordinate: landmarkCoordinates.magicCube,
+  },
+  { id: "open-kiosk", label: "Open kiosk", coordinate: landmarkCoordinates.openKiosk },
+  {
+    id: "behind-kiosk",
+    label: "20m behind kiosk",
+    coordinate: landmarkCoordinates.behindKiosk,
+  },
+  {
+    id: "wriezener-karree",
+    label: "Wriezener Karree",
+    coordinate: landmarkCoordinates.wriezenerKarree,
+  },
+  { id: "metro-sign", label: "Metro sign", coordinate: landmarkCoordinates.metro },
+];
+
+function getQueuePathPercent(coordinate: GeoCoordinate) {
+  const queuePathIndex = queuePath.findIndex(
+    ([longitude, latitude]) => longitude === coordinate[0] && latitude === coordinate[1],
+  );
+
+  if (queuePathIndex < 0) {
+    return 0;
+  }
+
+  return Math.round((queuePathIndex / (queuePath.length - 1)) * 100);
+}
+
+export const queueKeyPoints: QueueKeyPoint[] = queueKeyPointSource.map((keyPoint) => ({
+  ...keyPoint,
+  percent: getQueuePathPercent(keyPoint.coordinate),
+}));
