@@ -69,6 +69,17 @@ CI runs `lint`, `format:check`, and `build` on every PR via the `blocking-checks
 
 Prettier config lives at the repo root (`.prettierrc`, `.prettierignore`) so it can cover future `apps/*` consistently. ESLint config stays in `apps/web/eslint.config.mjs` because the rules are Next.js-specific.
 
+## Production
+
+The web app is hosted on **[Render](https://render.com)**.
+
+| Environment | URL                                                              |
+| ----------- | ---------------------------------------------------------------- |
+| Production  | <https://bergline.de>                                            |
+| PR previews | Each pull request gets its own preview URL, linked from the PR.  |
+
+Render service dashboard (Advantage Labs members only): <https://dashboard.render.com/web/srv-d824s6kvikkc73ec3n6g>.
+
 ## Project structure (`apps/web`)
 
 ```
