@@ -31,6 +31,7 @@ const metersPerDegreeAtEquator = 111_320;
 const sceneScale = 0.028;
 const groundY = -0.82;
 const siteLineY = groundY + 0.005;
+const cameraTarget = new Vector3(-0.05, -0.6, 0.1);
 const origin = landmarkCoordinates.door;
 const originLatitudeRadians = (origin[1] * Math.PI) / 180;
 const mappedQueuePath = queuePath.map((coordinate) => projectCoordinate(coordinate));
@@ -163,6 +164,8 @@ function PanControls() {
     controls.touches.ONE = TOUCH.PAN;
     controls.touches.TWO = TOUCH.DOLLY_PAN;
     controls.screenSpacePanning = true;
+    controls.target.copy(cameraTarget);
+    controls.update();
     const requestFrame = () => invalidate();
 
     controls.addEventListener("change", requestFrame);
@@ -298,7 +301,7 @@ export function BerglineScene() {
       frameloop="demand"
       gl={{ antialias: true }}
       onCreated={({ camera }) => {
-        camera.lookAt(-0.05, -0.6, 0.1);
+        camera.lookAt(cameraTarget);
       }}
     >
       <SceneGeometry />
