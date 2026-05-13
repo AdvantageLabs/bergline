@@ -1,0 +1,12 @@
+**/node_modules/
+**/.next/
+**/build/
+**/dist/
+**/out/
+**/coverage/
+**/.turbo/
+
+apps/web/next-env.d.ts
+apps/web/package-lock.json
+
+LICENSE
