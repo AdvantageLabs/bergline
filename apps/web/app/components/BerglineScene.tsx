@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useThree } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BufferGeometry,
   CatmullRomCurve3,
@@ -19,6 +19,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
   GeoCoordinate,
   landmarkCoordinates,
+  QueueKeyPoint,
   queuePath,
   siteLines,
   sitePolygons,
@@ -35,17 +36,15 @@ const cameraTarget = new Vector3(-0.05, -0.6, 0.1);
 const origin = landmarkCoordinates.door;
 const originLatitudeRadians = (origin[1] * Math.PI) / 180;
 const mappedQueuePath = queuePath.map((coordinate) => projectCoordinate(coordinate));
-const queueProgress = 1;
-const visibleQueuePoints = getVisibleQueuePoints(mappedQueuePath, queueProgress);
-const visibleQueueNodes = mappedQueuePath.slice(
-  0,
-  Math.max(2, Math.ceil(mappedQueuePath.length * Math.min(Math.max(queueProgress, 0), 1))),
-);
 const landmarkPositions = [
   { key: "door", point: projectCoordinate(landmarkCoordinates.door), radius: 0.08 },
   { key: "snake", point: projectCoordinate(landmarkCoordinates.snakeStart), radius: 0.05 },
   { key: "metro", point: projectCoordinate(landmarkCoordinates.metro), radius: 0.08 },
 ];
+type QueueEstimateResponse = {
+  percent: number;
+  keyPoint: QueueKeyPoint;
+};
 
 function projectCoordinate([longitude, latitude]: GeoCoordinate, y = groundY): ScenePoint {
   const eastMeters =
@@ -210,13 +209,21 @@ function LandmarkMarkers() {
   );
 }
 
-function SceneGeometry() {
+function SceneGeometry({ queueProgress }: { queueProgress: number }) {
+  const visibleQueuePoints = useMemo(
+    () => getVisibleQueuePoints(mappedQueuePath, queueProgress),
+    [queueProgress],
+  );
+  const visibleQueueNodes = useMemo(
+    () => getVisibleQueueNodes(mappedQueuePath, queueProgress),
+    [queueProgress],
+  );
   const queueGeometries = useMemo(
     () => ({
       queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.008, 180),
       queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.003, 180),
     }),
-    [],
+    [visibleQueuePoints],
   );
   const polygonGeometries = useMemo(
     () =>
@@ -294,6 +301,36 @@ function SceneGeometry() {
 }
 
 export function BerglineScene() {
+  const [queueProgress, setQueueProgress] = useState(1);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadQueueEstimate() {
+      const response = await fetch("/api/queue-estimate", { cache: "no-store" });
+
+      if (!response.ok) {
+        throw new Error("Queue estimate request failed");
+      }
+
+      const estimate = (await response.json()) as QueueEstimateResponse;
+
+      if (isMounted) {
+        setQueueProgress(estimate.percent / 100);
+      }
+    }
+
+    loadQueueEstimate().catch(() => {
+      if (isMounted) {
+        setQueueProgress(1);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <Canvas
       camera={{ position: [0.55, 6.8, 6.7], fov: 43 }}
@@ -304,8 +341,15 @@ export function BerglineScene() {
         camera.lookAt(cameraTarget);
       }}
     >
-      <SceneGeometry />
+      <SceneGeometry queueProgress={queueProgress} />
       <PanControls />
     </Canvas>
   );
+}
+
+function getVisibleQueueNodes(points: ScenePoint[], progress: number) {
+  const clampedProgress = Math.min(Math.max(progress, 0), 1);
+  const visiblePointCount = Math.max(2, Math.ceil(points.length * clampedProgress));
+
+  return points.slice(0, visiblePointCount);
 }
