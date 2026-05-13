@@ -43,12 +43,31 @@ Then open <http://localhost:3000> — you should see a minimal page with the Ber
 
 All scripts run from inside `apps/web`.
 
-| Command         | What it does                                                       |
-| --------------- | ------------------------------------------------------------------ |
-| `npm run dev`   | Starts the Next.js dev server on http://localhost:3000 (Turbopack) |
-| `npm run build` | Produces a production build in `apps/web/.next`                    |
-| `npm run start` | Serves the production build locally on http://localhost:3000       |
-| `npm run lint`  | Runs ESLint with the Next.js core-web-vitals + TypeScript rules    |
+| Command                | What it does                                                       |
+| ---------------------- | ------------------------------------------------------------------ |
+| `npm run dev`          | Starts the Next.js dev server on http://localhost:3000 (Turbopack) |
+| `npm run build`        | Produces a production build in `apps/web/.next`                    |
+| `npm run start`        | Serves the production build locally on http://localhost:3000       |
+| `npm run lint`         | Runs ESLint with the Next.js core-web-vitals + TypeScript rules    |
+| `npm run format`       | Rewrites files in place with Prettier (auto-fix)                   |
+| `npm run format:check` | Checks formatting without writing — used by CI                     |
+
+## Lint & format
+
+The repo uses **ESLint** for correctness and **Prettier** for formatting. They have separate jobs and don't overlap (`eslint-config-prettier` disables every ESLint rule that would touch style).
+
+Day-to-day:
+
+```bash
+# Inside apps/web
+npm run lint           # is the code correct?
+npm run format:check   # is the code formatted?
+npm run format         # fix formatting in place
+```
+
+CI runs `lint`, `format:check`, and `build` on every PR via the `blocking-checks` workflow — a red check there means one of the three failed.
+
+Prettier config lives at the repo root (`.prettierrc`, `.prettierignore`) so it can cover future `apps/*` consistently. ESLint config stays in `apps/web/eslint.config.mjs` because the rules are Next.js-specific.
 
 ## Project structure (`apps/web`)
 
