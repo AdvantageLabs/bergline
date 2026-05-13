@@ -19,15 +19,74 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-main {
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.home {
+  position: relative;
   min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 2rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(31, 246, 255, 0.16), transparent 32rem),
+    linear-gradient(180deg, #030507 0%, #000 100%);
+}
+
+.scene-shell {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100dvh;
+}
+
+.scene-shell canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.hud {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 42rem);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding: clamp(1.25rem, 4vw, 3.5rem);
+  pointer-events: none;
+}
+
+.eyebrow,
+.status {
+  color: #9af9ff;
+  font-size: clamp(0.78rem, 1.6vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 0 1.25rem rgba(47, 246, 255, 0.55);
 }
 
 h1 {
-  font-size: clamp(2.5rem, 8vw, 5rem);
-  font-weight: 600;
-  letter-spacing: -0.04em;
+  max-width: 12ch;
+  font-size: clamp(2.8rem, 10vw, 6.5rem);
+  line-height: 0.9;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 1.4rem rgba(47, 246, 255, 0.5),
+    0 0 4rem rgba(212, 44, 255, 0.22);
+}
+
+@media (min-width: 720px) {
+  .hud {
+    justify-content: center;
+    padding-left: clamp(2rem, 6vw, 5rem);
+  }
 }
