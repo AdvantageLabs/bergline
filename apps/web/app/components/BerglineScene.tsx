@@ -2,13 +2,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { useMemo } from "react";
-import {
-  BoxGeometry,
-  CatmullRomCurve3,
-  EdgesGeometry,
-  TubeGeometry,
-  Vector3,
-} from "three";
+import { BoxGeometry, CatmullRomCurve3, EdgesGeometry, TubeGeometry, Vector3 } from "three";
 
 type QueuePoint = [number, number, number];
 
@@ -182,14 +176,8 @@ function SceneGeometry() {
     }),
     [],
   );
-  const {
-    queueGlowGeometry,
-    queueCoreGeometry,
-  } = queueGeometries;
-  const {
-    buildingEdgesGeometry,
-    doorEdgesGeometry,
-  } = edgeGeometries;
+  const { queueGlowGeometry, queueCoreGeometry } = queueGeometries;
+  const { buildingEdgesGeometry, doorEdgesGeometry } = edgeGeometries;
 
   return (
     <>
@@ -236,10 +224,7 @@ function SceneGeometry() {
         <LandmarkMarkers />
         <QueueNodes visibleQueueNodes={visibleQueueNodes} />
 
-        <gridHelper
-          args={[9.5, 20, "#0f3b37", "#061817"]}
-          position={[-0.72, -0.88, 2.15]}
-        />
+        <gridHelper args={[9.5, 20, "#0f3b37", "#061817"]} position={[-0.72, -0.88, 2.15]} />
       </group>
     </>
   );
