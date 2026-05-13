@@ -1,8 +1,13 @@
 "use client";
 
-import { Line, Edges } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { CatmullRomCurve3, Vector3 } from "three";
+import {
+  BoxGeometry,
+  CatmullRomCurve3,
+  EdgesGeometry,
+  TubeGeometry,
+  Vector3,
+} from "three";
 
 type QueuePoint = [number, number, number];
 
@@ -39,6 +44,16 @@ const visibleQueueNodes = queuePath.slice(
   0,
   Math.max(2, Math.round(queuePath.length * queueProgress)),
 );
+const visibleQueueCurve = new CatmullRomCurve3(
+  visibleQueuePoints,
+  false,
+  "catmullrom",
+  0.28,
+);
+const queueGlowGeometry = new TubeGeometry(visibleQueueCurve, 96, 0.035, 10, false);
+const queueCoreGeometry = new TubeGeometry(visibleQueueCurve, 96, 0.013, 8, false);
+const buildingEdgesGeometry = new EdgesGeometry(new BoxGeometry(2.05, 1.42, 1));
+const doorEdgesGeometry = new EdgesGeometry(new BoxGeometry(0.46, 0.68, 0.06));
 
 function QueueNodes() {
   return (
@@ -81,14 +96,20 @@ function SceneGeometry() {
         <mesh position={[0, -0.08, -1.55]}>
           <boxGeometry args={[2.05, 1.42, 1]} />
           <meshBasicMaterial color="#050b0d" />
-          <Edges color="#2ff6ff" threshold={15} />
         </mesh>
+        <lineSegments position={[0, -0.08, -1.55]}>
+          <primitive object={buildingEdgesGeometry} attach="geometry" />
+          <lineBasicMaterial color="#2ff6ff" />
+        </lineSegments>
 
         <mesh position={[0, -0.42, -1.04]}>
           <boxGeometry args={[0.46, 0.68, 0.06]} />
           <meshBasicMaterial color="#071314" />
-          <Edges color="#6cffdf" threshold={10} />
         </mesh>
+        <lineSegments position={[0, -0.42, -1.04]}>
+          <primitive object={doorEdgesGeometry} attach="geometry" />
+          <lineBasicMaterial color="#6cffdf" />
+        </lineSegments>
         <FacadeStripes />
 
         <mesh position={[0, -0.42, -0.99]}>
@@ -101,20 +122,12 @@ function SceneGeometry() {
           <meshBasicMaterial color="#86ffe7" />
         </mesh>
 
-        <Line
-          points={visibleQueuePoints}
-          color="#69ffdf"
-          lineWidth={6}
-          transparent
-          opacity={0.95}
-        />
-        <Line
-          points={visibleQueuePoints}
-          color="#f3fffe"
-          lineWidth={2}
-          transparent
-          opacity={0.42}
-        />
+        <mesh geometry={queueGlowGeometry}>
+          <meshBasicMaterial color="#69ffdf" transparent opacity={0.92} />
+        </mesh>
+        <mesh geometry={queueCoreGeometry}>
+          <meshBasicMaterial color="#f3fffe" transparent opacity={0.5} />
+        </mesh>
         <QueueNodes />
 
         <gridHelper
