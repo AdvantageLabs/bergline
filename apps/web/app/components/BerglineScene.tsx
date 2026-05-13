@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { useMemo } from "react";
 import {
   BoxGeometry,
   CatmullRomCurve3,
@@ -87,16 +88,19 @@ const queueProgress = 1;
 const facadeStripeXPositions = [-0.74, -0.58, -0.42, 0.42, 0.58, 0.74];
 
 function getVisibleQueuePoints(points: QueuePoint[], progress: number) {
+  const clampedProgress = Math.min(Math.max(progress, 0), 1);
   const vectors = points.map((point) => new Vector3(...point));
   const curve = new CatmullRomCurve3(vectors, false, "catmullrom", 0.28);
-  const samples = Math.max(8, Math.round(72 * Math.min(Math.max(progress, 0), 1)));
+  const samples = Math.max(2, Math.round(72 * clampedProgress));
 
-  return curve.getPoints(samples);
+  return Array.from({ length: samples + 1 }, (_, index) =>
+    curve.getPointAt((index / samples) * clampedProgress),
+  );
 }
 
-function getPathGeometry(points: QueuePoint[], radius: number, segments = 80) {
+function getPathGeometry(points: Array<QueuePoint | Vector3>, radius: number, segments = 80) {
   const curve = new CatmullRomCurve3(
-    points.map((point) => new Vector3(...point)),
+    points.map((point) => (point instanceof Vector3 ? point : new Vector3(...point))),
     false,
     "catmullrom",
     0.22,
@@ -105,26 +109,7 @@ function getPathGeometry(points: QueuePoint[], radius: number, segments = 80) {
   return new TubeGeometry(curve, segments, radius, 8, false);
 }
 
-const visibleQueuePoints = getVisibleQueuePoints(queuePath, queueProgress);
-const visibleQueueNodes = queuePath.slice(
-  0,
-  Math.max(2, Math.round(queuePath.length * queueProgress)),
-);
-const queueGlowGeometry = getPathGeometry(
-  visibleQueuePoints.map((point) => point.toArray() as QueuePoint),
-  0.04,
-  120,
-);
-const queueCoreGeometry = getPathGeometry(
-  visibleQueuePoints.map((point) => point.toArray() as QueuePoint),
-  0.014,
-  120,
-);
-const streetGeometries = streetPaths.map((path) => getPathGeometry(path, 0.012, 64));
-const buildingEdgesGeometry = new EdgesGeometry(new BoxGeometry(2.05, 1.42, 1));
-const doorEdgesGeometry = new EdgesGeometry(new BoxGeometry(0.46, 0.68, 0.06));
-
-function QueueNodes() {
+function QueueNodes({ visibleQueueNodes }: { visibleQueueNodes: QueuePoint[] }) {
   return (
     <>
       {visibleQueueNodes.slice(1).map((point) => (
@@ -174,6 +159,35 @@ function FacadeStripes() {
 }
 
 function SceneGeometry() {
+  const visibleQueuePoints = useMemo(
+    () => getVisibleQueuePoints(queuePath, queueProgress),
+    [],
+  );
+  const visibleQueueNodes = useMemo(
+    () =>
+      queuePath.slice(
+        0,
+        Math.max(2, Math.ceil(queuePath.length * Math.min(Math.max(queueProgress, 0), 1))),
+      ),
+    [],
+  );
+  const {
+    queueGlowGeometry,
+    queueCoreGeometry,
+    streetGeometries,
+    buildingEdgesGeometry,
+    doorEdgesGeometry,
+  } = useMemo(
+    () => ({
+      queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.04, 120),
+      queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.014, 120),
+      streetGeometries: streetPaths.map((path) => getPathGeometry(path, 0.012, 64)),
+      buildingEdgesGeometry: new EdgesGeometry(new BoxGeometry(2.05, 1.42, 1)),
+      doorEdgesGeometry: new EdgesGeometry(new BoxGeometry(0.46, 0.68, 0.06)),
+    }),
+    [visibleQueuePoints],
+  );
+
   return (
     <>
       <color attach="background" args={["#020304"]} />
@@ -217,7 +231,7 @@ function SceneGeometry() {
           <meshBasicMaterial color="#f3fffe" transparent opacity={0.5} />
         </mesh>
         <LandmarkMarkers />
-        <QueueNodes />
+        <QueueNodes visibleQueueNodes={visibleQueueNodes} />
 
         <gridHelper
           args={[9.5, 20, "#0f3b37", "#061817"]}
