@@ -86,6 +86,11 @@ const landmarkPositions = [
 
 const queueProgress = 1;
 const facadeStripeXPositions = [-0.74, -0.58, -0.42, 0.42, 0.58, 0.74];
+const visibleQueuePoints = getVisibleQueuePoints(queuePath, queueProgress);
+const visibleQueueNodes = queuePath.slice(
+  0,
+  Math.max(2, Math.ceil(queuePath.length * Math.min(Math.max(queueProgress, 0), 1))),
+);
 
 function getVisibleQueuePoints(points: QueuePoint[], progress: number) {
   const clampedProgress = Math.min(Math.max(progress, 0), 1);
@@ -159,34 +164,32 @@ function FacadeStripes() {
 }
 
 function SceneGeometry() {
-  const visibleQueuePoints = useMemo(
-    () => getVisibleQueuePoints(queuePath, queueProgress),
+  const queueGeometries = useMemo(
+    () => ({
+      queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.04, 120),
+      queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.014, 120),
+    }),
     [],
   );
-  const visibleQueueNodes = useMemo(
-    () =>
-      queuePath.slice(
-        0,
-        Math.max(2, Math.ceil(queuePath.length * Math.min(Math.max(queueProgress, 0), 1))),
-      ),
+  const streetGeometries = useMemo(
+    () => streetPaths.map((path) => getPathGeometry(path, 0.012, 64)),
+    [],
+  );
+  const edgeGeometries = useMemo(
+    () => ({
+      buildingEdgesGeometry: new EdgesGeometry(new BoxGeometry(2.05, 1.42, 1)),
+      doorEdgesGeometry: new EdgesGeometry(new BoxGeometry(0.46, 0.68, 0.06)),
+    }),
     [],
   );
   const {
     queueGlowGeometry,
     queueCoreGeometry,
-    streetGeometries,
+  } = queueGeometries;
+  const {
     buildingEdgesGeometry,
     doorEdgesGeometry,
-  } = useMemo(
-    () => ({
-      queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.04, 120),
-      queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.014, 120),
-      streetGeometries: streetPaths.map((path) => getPathGeometry(path, 0.012, 64)),
-      buildingEdgesGeometry: new EdgesGeometry(new BoxGeometry(2.05, 1.42, 1)),
-      doorEdgesGeometry: new EdgesGeometry(new BoxGeometry(0.46, 0.68, 0.06)),
-    }),
-    [visibleQueuePoints],
-  );
+  } = edgeGeometries;
 
   return (
     <>
@@ -247,6 +250,7 @@ export function BerglineScene() {
     <Canvas
       camera={{ position: [0.05, 8.3, 10.4], fov: 45 }}
       dpr={[1, 1.7]}
+      frameloop="demand"
       gl={{ antialias: true }}
       onCreated={({ camera }) => {
         camera.lookAt(-0.86, -0.62, 2.35);
