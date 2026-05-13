@@ -12,6 +12,10 @@ export default function Home() {
         <h1>Bergline</h1>
         <p className="status">Queue path prototype</p>
       </section>
+
+      <div className="coming-soon" aria-label="Coming soon">
+        <p>Coming soon</p>
+      </div>
     </main>
   );
 }
