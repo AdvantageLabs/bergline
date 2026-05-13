@@ -26,6 +26,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          # Skip the Playwright postinstall browser download; the explicit
+          # "Install Playwright browser" step below downloads only Chromium.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
 
       - name: Lint
         run: npm run lint
@@ -35,3 +39,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npm run test:e2e

@@ -51,6 +51,7 @@ All scripts run from inside `apps/web`.
 | `npm run lint`         | Runs ESLint with the Next.js core-web-vitals + TypeScript rules    |
 | `npm run format`       | Rewrites files in place with Prettier (auto-fix)                   |
 | `npm run format:check` | Checks formatting without writing — used by CI                     |
+| `npm run test:e2e`     | Runs the Playwright smoke test against a local production build     |
 
 ## Lint & format
 
@@ -65,9 +66,32 @@ npm run format:check   # is the code formatted?
 npm run format         # fix formatting in place
 ```
 
-CI runs `lint`, `format:check`, and `build` on every PR via the `blocking-checks` workflow — a red check there means one of the three failed.
+CI runs `lint`, `format:check`, `build`, and a Playwright smoke test on every PR via the `blocking-checks` workflow — a red check there means one of them failed.
+
+## Smoke test
+
+A single Playwright spec lives at `apps/web/e2e/homepage.spec.ts`. It loads the homepage in headless Chromium and asserts the page title and the `Bergline` wordmark are visible — enough to catch a runtime regression that a `next build` would miss (broken hydration, missing assets, accidental content deletion). To run it locally:
+
+```bash
+# Inside apps/web — needs a production build first
+npm run build
+npm run test:e2e
+```
+
+CI installs the Chromium browser binary on each run and executes the test after `build`.
 
 Prettier config lives at the repo root (`.prettierrc`, `.prettierignore`) so it can cover future `apps/*` consistently. ESLint config stays in `apps/web/eslint.config.mjs` because the rules are Next.js-specific.
+
+## Production
+
+The web app is hosted on **[Render](https://render.com)**.
+
+| Environment | URL                                                              |
+| ----------- | ---------------------------------------------------------------- |
+| Production  | <https://bergline.de>                                            |
+| PR previews | Each pull request gets its own preview URL, linked from the PR.  |
+
+Advantage Labs members can find the service in the [Render dashboard](https://dashboard.render.com).
 
 ## Project structure (`apps/web`)
 
