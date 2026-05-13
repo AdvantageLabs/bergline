@@ -3,7 +3,7 @@ import { BerglineScene } from "./components/BerglineScene";
 export default function Home() {
   return (
     <main className="home">
-      <section className="scene-shell" aria-label="Bergline queue visualization">
+      <section className="scene-shell" aria-hidden="true">
         <BerglineScene />
       </section>
 

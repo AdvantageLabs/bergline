@@ -16,7 +16,7 @@ This is a monorepo-style layout. `apps/web` is currently the only deployable sur
 
 ## Prerequisites
 
-- **Node.js 20.x or newer** (the repo is developed against Node 22). Check with `node --version`.
+- **Node.js 22.x or newer**. Check with `node --version`.
 - **npm 10.x or newer** — ships with recent Node releases.
 
 If you don't have a matching Node version, we recommend [nvm](https://github.com/nvm-sh/nvm):
