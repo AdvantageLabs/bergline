@@ -13,8 +13,16 @@ export default function Home() {
         <p className="status">Queue path prototype</p>
       </section>
 
-      <div className="coming-soon" aria-label="Coming soon">
-        <p>Coming soon</p>
+      <div className="bottom-status" aria-label="Coming soon and feedback">
+        <p className="coming-soon">Coming soon</p>
+        <a
+          className="feedback-link"
+          href="mailto:feedback@bergline.de?subject=Bergline%20feedback"
+          aria-label="Give feedback by email"
+        >
+          <span>Give feedback</span>
+          <small>Opens email</small>
+        </a>
       </div>
     </main>
   );
