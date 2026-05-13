@@ -68,7 +68,7 @@ select {
 .bottom-status {
   position: absolute;
   right: clamp(1.25rem, 4vw, 3.5rem);
-  bottom: clamp(1.25rem, 4vw, 3.5rem);
+  bottom: clamp(2.75rem, 6vw, 4.5rem);
   left: clamp(1.25rem, 4vw, 3.5rem);
   z-index: 2;
   display: flex;
@@ -138,6 +138,97 @@ select {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: none;
+}
+
+.legal-links {
+  position: absolute;
+  right: clamp(0.8rem, 2vw, 1.35rem);
+  bottom: clamp(0.65rem, 1.6vw, 1rem);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  color: rgba(248, 253, 255, 0.34);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.legal-links a,
+.legal-content a,
+.back-link {
+  color: inherit;
+  text-decoration-color: rgba(154, 249, 255, 0.45);
+  text-underline-offset: 0.22em;
+}
+
+.legal-links a:hover,
+.legal-links a:focus-visible,
+.legal-content a:hover,
+.legal-content a:focus-visible,
+.back-link:hover,
+.back-link:focus-visible {
+  color: #f8fdff;
+  text-decoration-color: currentColor;
+}
+
+.legal-page {
+  min-height: 100dvh;
+  padding: clamp(1.25rem, 5vw, 4rem);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(31, 246, 255, 0.12), transparent 28rem), #030507;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: clamp(2rem, 6vw, 4rem);
+  color: #9af9ff;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.legal-content {
+  width: min(100%, 46rem);
+  margin: 0 auto;
+  color: rgba(248, 253, 255, 0.82);
+}
+
+.legal-kicker {
+  color: #9af9ff;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.legal-content h1 {
+  margin-top: 0.45rem;
+  margin-bottom: clamp(2rem, 5vw, 3rem);
+  text-align: left;
+}
+
+.legal-content section + section {
+  margin-top: 1.65rem;
+}
+
+.legal-content h2 {
+  margin-bottom: 0.55rem;
+  color: #f8fdff;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.legal-content p {
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.legal-content p + p {
+  margin-top: 0.75rem;
 }
 
 .eyebrow,
