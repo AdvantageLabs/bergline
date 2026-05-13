@@ -18,7 +18,7 @@ type ScenePoint = [x: number, y: number, z: number];
 const metersPerDegreeAtEquator = 111_320;
 const sceneScale = 0.028;
 const groundY = -0.82;
-const roadsY = groundY + 0.005;
+const siteLineY = groundY + 0.005;
 const origin = landmarkCoordinates.door;
 const originLatitudeRadians = (origin[1] * Math.PI) / 180;
 const mappedQueuePath = queuePath.map((coordinate) => projectCoordinate(coordinate));
@@ -65,11 +65,7 @@ function getPathGeometry(points: Array<ScenePoint | Vector3>, radius: number, se
 }
 
 function getLineSegmentsGeometry(points: ScenePoint[]) {
-  const vertices = points
-    .slice(0, -1)
-    .flatMap((point, index) => [new Vector3(...point), new Vector3(...points[index + 1])]);
-
-  return new BufferGeometry().setFromPoints(vertices);
+  return new BufferGeometry().setFromPoints(getSegmentVertices(points));
 }
 
 function getPolygonWireframeGeometry(polygon: SitePolygon) {
@@ -77,19 +73,32 @@ function getPolygonWireframeGeometry(polygon: SitePolygon) {
   const roofline = polygon.coordinates.map((coordinate) =>
     projectCoordinate(coordinate, groundY + polygon.height),
   );
-  const horizontalEdges = [...segmentPairs(footprint), ...segmentPairs(roofline)];
-  const verticalEdges = footprint.flatMap((point, index) => [
+  const uniqueFootprint = withoutClosingPoint(footprint);
+  const uniqueRoofline = withoutClosingPoint(roofline);
+  const horizontalEdges = [...getSegmentVertices(footprint), ...getSegmentVertices(roofline)];
+  const verticalEdges = uniqueFootprint.flatMap((point, index) => [
     new Vector3(...point),
-    new Vector3(...roofline[index]),
+    new Vector3(...uniqueRoofline[index]),
   ]);
 
   return new BufferGeometry().setFromPoints([...horizontalEdges, ...verticalEdges]);
 }
 
-function segmentPairs(points: ScenePoint[]) {
+function getSegmentVertices(points: ScenePoint[]) {
   return points
     .slice(0, -1)
     .flatMap((point, index) => [new Vector3(...point), new Vector3(...points[index + 1])]);
+}
+
+function withoutClosingPoint(points: ScenePoint[]) {
+  const [firstPoint] = points;
+  const lastPoint = points[points.length - 1];
+
+  if (firstPoint && lastPoint && firstPoint.every((value, index) => value === lastPoint[index])) {
+    return points.slice(0, -1);
+  }
+
+  return points;
 }
 
 function QueueNodes({ visibleQueueNodes }: { visibleQueueNodes: ScenePoint[] }) {
@@ -144,7 +153,7 @@ function SceneGeometry() {
     () =>
       siteLines.map((line) => ({
         geometry: getLineSegmentsGeometry(
-          line.coordinates.map((coordinate) => projectCoordinate(coordinate, roadsY)),
+          line.coordinates.map((coordinate) => projectCoordinate(coordinate, siteLineY)),
         ),
         name: line.name,
         tone: line.tone,
