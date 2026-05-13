@@ -1,8 +1,20 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
-import { useMemo } from "react";
-import { BufferGeometry, CatmullRomCurve3, TubeGeometry, Vector3 } from "three";
+import { Canvas, useThree } from "@react-three/fiber";
+import { useEffect, useMemo } from "react";
+import {
+  BufferGeometry,
+  CatmullRomCurve3,
+  DoubleSide,
+  Float32BufferAttribute,
+  MOUSE,
+  ShapeUtils,
+  TOUCH,
+  TubeGeometry,
+  Vector2,
+  Vector3,
+} from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import {
   GeoCoordinate,
@@ -90,6 +102,39 @@ function getSegmentVertices(points: ScenePoint[]) {
     .flatMap((point, index) => [new Vector3(...point), new Vector3(...points[index + 1])]);
 }
 
+function getPolygonVolumeGeometry(polygon: SitePolygon) {
+  const footprint = withoutClosingPoint(
+    polygon.coordinates.map((coordinate) => projectCoordinate(coordinate)),
+  );
+  const roofline = footprint.map(
+    ([x, , z]) => [x, groundY + polygon.height, z] satisfies ScenePoint,
+  );
+  const shapePoints = footprint.map(([x, , z]) => new Vector2(x, z));
+  const triangles = ShapeUtils.triangulateShape(shapePoints, []);
+  const vertices: number[] = [];
+
+  triangles.forEach(([a, b, c]) => {
+    pushTriangle(vertices, roofline[a], roofline[b], roofline[c]);
+    pushTriangle(vertices, footprint[c], footprint[b], footprint[a]);
+  });
+
+  footprint.forEach((point, index) => {
+    const nextIndex = (index + 1) % footprint.length;
+    const nextPoint = footprint[nextIndex];
+    const roofPoint = roofline[index];
+    const nextRoofPoint = roofline[nextIndex];
+
+    pushTriangle(vertices, point, nextPoint, nextRoofPoint);
+    pushTriangle(vertices, point, nextRoofPoint, roofPoint);
+  });
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  geometry.computeVertexNormals();
+
+  return geometry;
+}
+
 function withoutClosingPoint(points: ScenePoint[]) {
   const [firstPoint] = points;
   const lastPoint = points[points.length - 1];
@@ -99,6 +144,36 @@ function withoutClosingPoint(points: ScenePoint[]) {
   }
 
   return points;
+}
+
+function pushTriangle(vertices: number[], a: ScenePoint, b: ScenePoint, c: ScenePoint) {
+  vertices.push(...a, ...b, ...c);
+}
+
+function PanControls() {
+  const { camera, gl, invalidate } = useThree();
+
+  useEffect(() => {
+    const controls = new OrbitControls(camera, gl.domElement);
+
+    controls.enableRotate = false;
+    controls.enableZoom = false;
+    controls.enablePan = true;
+    controls.mouseButtons.LEFT = MOUSE.PAN;
+    controls.touches.ONE = TOUCH.PAN;
+    controls.touches.TWO = TOUCH.DOLLY_PAN;
+    controls.screenSpacePanning = true;
+    const requestFrame = () => invalidate();
+
+    controls.addEventListener("change", requestFrame);
+
+    return () => {
+      controls.removeEventListener("change", requestFrame);
+      controls.dispose();
+    };
+  }, [camera, gl, invalidate]);
+
+  return null;
 }
 
 function QueueNodes({ visibleQueueNodes }: { visibleQueueNodes: ScenePoint[] }) {
@@ -143,6 +218,7 @@ function SceneGeometry() {
   const polygonGeometries = useMemo(
     () =>
       sitePolygons.map((polygon) => ({
+        fillGeometry: getPolygonVolumeGeometry(polygon),
         geometry: getPolygonWireframeGeometry(polygon),
         name: polygon.name,
         tone: polygon.tone,
@@ -178,14 +254,24 @@ function SceneGeometry() {
           </lineSegments>
         ))}
 
-        {polygonGeometries.map(({ geometry, name, tone }) => (
-          <lineSegments key={name} geometry={geometry}>
-            <lineBasicMaterial
-              color={tone === "building" ? "#2ff6ff" : "#aeb9b6"}
-              transparent
-              opacity={tone === "building" ? 0.72 : 0.42}
-            />
-          </lineSegments>
+        {polygonGeometries.map(({ fillGeometry, geometry, name, tone }) => (
+          <group key={name}>
+            <mesh geometry={fillGeometry}>
+              <meshBasicMaterial
+                color={tone === "building" ? "#6f7d7b" : "#8c9693"}
+                side={DoubleSide}
+                transparent
+                opacity={tone === "building" ? 0.16 : 0.28}
+              />
+            </mesh>
+            <lineSegments geometry={geometry}>
+              <lineBasicMaterial
+                color={tone === "building" ? "#2ff6ff" : "#aeb9b6"}
+                transparent
+                opacity={tone === "building" ? 0.72 : 0.52}
+              />
+            </lineSegments>
+          </group>
         ))}
 
         <mesh geometry={queueGlowGeometry}>
@@ -216,6 +302,7 @@ export function BerglineScene() {
       }}
     >
       <SceneGeometry />
+      <PanControls />
     </Canvas>
   );
 }
