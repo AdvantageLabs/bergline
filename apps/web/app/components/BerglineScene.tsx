@@ -111,7 +111,7 @@ function getPathGeometry(points: Array<QueuePoint | Vector3>, radius: number, se
 function QueueNodes({ visibleQueueNodes }: { visibleQueueNodes: QueuePoint[] }) {
   return (
     <>
-      {visibleQueueNodes.slice(1).map((point) => (
+      {visibleQueueNodes.slice(1, -1).map((point) => (
         <mesh key={point.join(":")} position={point}>
           <sphereGeometry args={[0.07, 18, 18]} />
           <meshBasicMaterial color="#69ffdf" />
