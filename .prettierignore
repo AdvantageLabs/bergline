@@ -8,5 +8,7 @@
 
 apps/web/next-env.d.ts
 apps/web/package-lock.json
+apps/web/playwright-report/
+apps/web/test-results/
 
 LICENSE
