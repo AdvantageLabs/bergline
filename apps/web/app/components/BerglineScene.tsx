@@ -13,7 +13,7 @@ import {
 
 type ScenePoint = [x: number, y: number, z: number];
 
-const metersPerDegreeLatitude = 111_320;
+const metersPerDegreeAtEquator = 111_320;
 const sceneScale = 0.028;
 const groundY = -0.82;
 const roofY = 0.36;
@@ -44,8 +44,8 @@ function flattenSegments(segments: GeoCoordinate[][]) {
 
 function projectCoordinate([longitude, latitude]: GeoCoordinate, y = groundY): ScenePoint {
   const eastMeters =
-    (longitude - origin[0]) * metersPerDegreeLatitude * Math.cos(originLatitudeRadians);
-  const northMeters = (latitude - origin[1]) * metersPerDegreeLatitude;
+    (longitude - origin[0]) * metersPerDegreeAtEquator * Math.cos(originLatitudeRadians);
+  const northMeters = (latitude - origin[1]) * metersPerDegreeAtEquator;
 
   return [eastMeters * sceneScale, y, -northMeters * sceneScale];
 }

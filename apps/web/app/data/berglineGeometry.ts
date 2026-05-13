@@ -54,7 +54,7 @@ export const buildingOutline: GeoCoordinate[] = [
   [13.4434238, 52.5110402],
   [13.4434424, 52.5110588],
   [13.4433629, 52.5110989],
-  [13.4438333, 52.5115232],
+  [13.4438299, 52.5115263],
 ];
 
 export const landmarkCoordinates = {
