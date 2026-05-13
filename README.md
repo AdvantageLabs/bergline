@@ -91,7 +91,7 @@ The web app is hosted on **[Render](https://render.com)**.
 | Production  | <https://bergline.de>                                            |
 | PR previews | Each pull request gets its own preview URL, linked from the PR.  |
 
-Render service dashboard (Advantage Labs members only): <https://dashboard.render.com/web/srv-d824s6kvikkc73ec3n6g>.
+Advantage Labs members can find the service in the [Render dashboard](https://dashboard.render.com).
 
 ## Project structure (`apps/web`)
 
