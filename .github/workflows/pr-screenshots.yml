@@ -46,14 +46,15 @@ jobs:
         run: npm run build
 
       - name: Install Playwright
-        run: npx --yes playwright install --with-deps chromium
+        working-directory: apps/web
+        run: npm exec playwright install --with-deps chromium
 
       - name: Capture screenshots
         shell: bash
         run: |
           set -euo pipefail
 
-          npx --yes serve apps/web/out --listen 4173 >/tmp/bergline-screenshots.log 2>&1 &
+          python3 -m http.server 4173 --directory apps/web/out >/tmp/bergline-screenshots.log 2>&1 &
           serve_pid="$!"
           trap 'kill "$serve_pid" >/dev/null 2>&1 || true' EXIT
 
@@ -70,10 +71,8 @@ jobs:
             sleep 1
           done
 
-          playwright_bin="$(npx --yes -p playwright -c 'which playwright')"
-          playwright_modules="$(dirname "$(dirname "$playwright_bin")")"
           CAPTURE_URL="http://127.0.0.1:4173/" \
-            NODE_PATH="$playwright_modules" \
+            NODE_PATH="$GITHUB_WORKSPACE/apps/web/node_modules" \
             node .github/scripts/capture-pr-screenshots.js \
             .github/pr-screenshots.json \
             pr-screenshots
@@ -130,12 +129,14 @@ jobs:
           set -euo pipefail
 
           body_file="$(mktemp)"
+          payload_file="$(mktemp)"
+          marker="<!-- bergline-pr-screenshots -->"
 
           if [ -f pr-screenshots/comment.md ]; then
             cp pr-screenshots/comment.md "$body_file"
           else
             {
-              echo "<!-- bergline-pr-screenshots -->"
+              echo "$marker"
               echo "Screenshots artifact: $RUN_URL"
             } > "$body_file"
           fi
@@ -145,8 +146,24 @@ jobs:
             echo "Workflow run: $RUN_URL"
           } >> "$body_file"
 
-          gh pr comment "$PR_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --edit-last \
-            --create-if-none \
-            --body-file "$body_file"
+          jq -n --rawfile body "$body_file" '{ body: $body }' > "$payload_file"
+
+          comment_id="$(
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              --jq '.[] | select(.body | contains("<!-- bergline-pr-screenshots -->")) | .id' \
+              | tail -n 1
+          )"
+
+          if [ -n "$comment_id" ]; then
+            gh api \
+              --method PATCH \
+              "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" \
+              --input "$payload_file" \
+              >/dev/null
+          else
+            gh api \
+              --method POST \
+              "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              --input "$payload_file" \
+              >/dev/null
+          fi
