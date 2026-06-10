@@ -146,12 +146,29 @@ jobs:
             exit 1
           fi
 
+          total_bytes=0
+          max_file_bytes=$((5 * 1024 * 1024))
+          max_total_bytes=$((12 * 1024 * 1024))
+
           for artifact_file in "${png_files[@]}" pr-screenshots/manifest.json pr-screenshots/comment.md; do
             if [ ! -f "$artifact_file" ] || [ -L "$artifact_file" ]; then
               echo "Invalid screenshot artifact file: $artifact_file"
               exit 1
             fi
+
+            file_bytes="$(wc -c < "$artifact_file")"
+            if [ "$file_bytes" -gt "$max_file_bytes" ]; then
+              echo "Screenshot artifact file exceeds $max_file_bytes bytes: $artifact_file"
+              exit 1
+            fi
+
+            total_bytes=$((total_bytes + file_bytes))
           done
+
+          if [ "$total_bytes" -gt "$max_total_bytes" ]; then
+            echo "Screenshot artifact exceeds $max_total_bytes bytes total."
+            exit 1
+          fi
 
           cp -- "${png_files[@]}" "$screenshot_dir/"
           cp -- pr-screenshots/manifest.json "$screenshot_dir/"
@@ -198,7 +215,7 @@ jobs:
           jq -n --rawfile body "$body_file" '{ body: $body }' > "$payload_file"
 
           comment_id="$(
-            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+            gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
               --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- bergline-pr-screenshots -->"))) | .id' \
               | tail -n 1
           )"

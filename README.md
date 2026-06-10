@@ -70,12 +70,12 @@ CI runs `lint`, `format:check`, and `build` on every PR via the `blocking-checks
 ## PR screenshots
 
 Every pull request also runs the `PR screenshots` workflow. It builds a static export of
-`apps/web`, captures desktop and mobile screenshots with Playwright, and posts a PR comment with
-embedded images.
+`apps/web` and captures desktop and mobile screenshots with Playwright.
 
-The screenshot scenarios live in `.github/pr-screenshots.json`. The embedded image files are
-published to the `ci-screenshots` branch so GitHub can render them directly in the PR comment; the
-same PNGs are also uploaded as a workflow artifact.
+The screenshot scenarios live in `.github/pr-screenshots.json`. Same-repository pull requests
+publish the image files to the `ci-screenshots` branch and update one PR comment with embedded
+images. Pull requests from forks still upload the PNGs as a workflow artifact, but skip the
+write-scoped publish/comment step.
 
 Prettier config lives at the repo root (`.prettierrc`, `.prettierignore`) so it can cover future `apps/*` consistently. ESLint config stays in `apps/web/eslint.config.mjs` because the rules are Next.js-specific.
 
