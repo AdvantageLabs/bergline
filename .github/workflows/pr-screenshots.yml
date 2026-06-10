@@ -132,7 +132,28 @@ jobs:
               echo "Screenshots artifact: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             } > pr-screenshots/comment.md
           fi
-          cp -- pr-screenshots/*.png "$screenshot_dir/"
+
+          if find pr-screenshots -type l -print -quit | grep -q .; then
+            echo "Refusing to publish screenshot artifact containing symlinks."
+            exit 1
+          fi
+
+          shopt -s nullglob
+          png_files=(pr-screenshots/*.png)
+
+          if [ "${#png_files[@]}" -eq 0 ]; then
+            echo "No PNG screenshots found to publish."
+            exit 1
+          fi
+
+          for artifact_file in "${png_files[@]}" pr-screenshots/manifest.json pr-screenshots/comment.md; do
+            if [ ! -f "$artifact_file" ] || [ -L "$artifact_file" ]; then
+              echo "Invalid screenshot artifact file: $artifact_file"
+              exit 1
+            fi
+          done
+
+          cp -- "${png_files[@]}" "$screenshot_dir/"
           cp -- pr-screenshots/manifest.json "$screenshot_dir/"
           cp -- pr-screenshots/comment.md "$screenshot_dir/"
 
@@ -178,7 +199,7 @@ jobs:
 
           comment_id="$(
             gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
-              --jq '.[] | select(.body | contains("<!-- bergline-pr-screenshots -->")) | .id' \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- bergline-pr-screenshots -->"))) | .id' \
               | tail -n 1
           )"
 

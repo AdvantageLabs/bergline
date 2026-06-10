@@ -78,28 +78,33 @@ async function goToWithRetry(page, url) {
   const browser = await chromium.launch();
   const screenshots = [];
 
-  for (const scenario of config) {
-    const page = await browser.newPage({ viewport: scenario.viewport });
-    const scenarioId = getSafeScenarioId(scenario.id);
-    const scenarioUrl = buildUrl(captureUrl, scenario.path);
-    const fileName = `${scenarioId}.png`;
-    const filePath = path.join(outputDir, fileName);
+  try {
+    for (const scenario of config) {
+      const page = await browser.newPage({ viewport: scenario.viewport });
+      const scenarioId = getSafeScenarioId(scenario.id);
+      const scenarioUrl = buildUrl(captureUrl, scenario.path);
+      const fileName = `${scenarioId}.png`;
+      const filePath = path.join(outputDir, fileName);
 
-    await goToWithRetry(page, scenarioUrl);
-    await applyActions(page, scenario.actions);
-    await page.screenshot({ path: filePath, fullPage: Boolean(scenario.fullPage) });
-    await page.close();
+      try {
+        await goToWithRetry(page, scenarioUrl);
+        await applyActions(page, scenario.actions);
+        await page.screenshot({ path: filePath, fullPage: Boolean(scenario.fullPage) });
+      } finally {
+        await page.close();
+      }
 
-    screenshots.push({
-      id: scenarioId,
-      label: scenario.label,
-      path: fileName,
-      url: scenarioUrl,
-      viewport: scenario.viewport,
-    });
+      screenshots.push({
+        id: scenarioId,
+        label: scenario.label,
+        path: fileName,
+        url: scenarioUrl,
+        viewport: scenario.viewport,
+      });
+    }
+  } finally {
+    await browser.close();
   }
-
-  await browser.close();
 
   fs.writeFileSync(path.join(outputDir, "manifest.json"), JSON.stringify({ screenshots }, null, 2));
 
