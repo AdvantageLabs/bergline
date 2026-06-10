@@ -1,0 +1,152 @@
+name: PR screenshots
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: pr-screenshots-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build static screenshot target
+        working-directory: apps/web
+        env:
+          NEXT_OUTPUT: export
+        run: npm run build
+
+      - name: Install Playwright
+        run: npx --yes playwright install --with-deps chromium
+
+      - name: Capture screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npx --yes serve apps/web/out --listen 4173 >/tmp/bergline-screenshots.log 2>&1 &
+          serve_pid="$!"
+          trap 'kill "$serve_pid" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent "http://127.0.0.1:4173/" >/dev/null; then
+              break
+            fi
+
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/bergline-screenshots.log
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          playwright_bin="$(npx --yes -p playwright -c 'which playwright')"
+          playwright_modules="$(dirname "$(dirname "$playwright_bin")")"
+          CAPTURE_URL="http://127.0.0.1:4173/" \
+            NODE_PATH="$playwright_modules" \
+            node .github/scripts/capture-pr-screenshots.js \
+            .github/pr-screenshots.json \
+            pr-screenshots
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-screenshots-${{ github.event.pull_request.number }}
+          path: pr-screenshots/
+          if-no-files-found: error
+
+      - name: Publish embedded screenshots
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          worktree="$(mktemp -d)"
+
+          if git ls-remote --exit-code --heads origin ci-screenshots >/dev/null 2>&1; then
+            git fetch origin ci-screenshots
+            git worktree add "$worktree" origin/ci-screenshots
+          else
+            git worktree add --detach "$worktree"
+            git -C "$worktree" switch --orphan ci-screenshots
+            git -C "$worktree" rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          screenshot_dir="$worktree/pulls/$PR_NUMBER/$HEAD_SHA"
+          mkdir -p "$screenshot_dir"
+          cp pr-screenshots/*.png "$screenshot_dir/"
+          cp pr-screenshots/manifest.json "$screenshot_dir/"
+          cp pr-screenshots/comment.md "$screenshot_dir/"
+
+          git -C "$worktree" config user.name "github-actions[bot]"
+          git -C "$worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$worktree" add -A
+
+          if git -C "$worktree" diff --cached --quiet; then
+            echo "No screenshot changes to publish."
+            exit 0
+          fi
+
+          git -C "$worktree" commit -m "Publish screenshots for PR #$PR_NUMBER"
+          git -C "$worktree" push origin HEAD:ci-screenshots
+
+      - name: Comment screenshots
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          body_file="$(mktemp)"
+
+          if [ -f pr-screenshots/comment.md ]; then
+            cp pr-screenshots/comment.md "$body_file"
+          else
+            {
+              echo "<!-- bergline-pr-screenshots -->"
+              echo "Screenshots artifact: $RUN_URL"
+            } > "$body_file"
+          fi
+
+          {
+            echo
+            echo "Workflow run: $RUN_URL"
+          } >> "$body_file"
+
+          gh pr comment "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --edit-last \
+            --create-if-none \
+            --body-file "$body_file"

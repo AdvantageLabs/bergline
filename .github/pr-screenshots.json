@@ -1,0 +1,22 @@
+[
+  {
+    "id": "desktop",
+    "label": "Desktop",
+    "path": "/",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "actions": [{ "waitForSelector": "canvas" }, { "waitForTimeout": 1200 }]
+  },
+  {
+    "id": "mobile",
+    "label": "Mobile",
+    "path": "/",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "actions": [{ "waitForSelector": "canvas" }, { "waitForTimeout": 1200 }]
+  }
+]
