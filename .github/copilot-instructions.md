@@ -1,5 +1,7 @@
 # Copilot Review Entry Point
 
+Bergline's npm project lives in `apps/web`. There is intentionally no root `package.json`, so run npm commands from `apps/web`.
+
 Before reviewing a pull request, read and apply these files in order:
 
 - `docs/contribute/review/00-feature-behavior.md`
