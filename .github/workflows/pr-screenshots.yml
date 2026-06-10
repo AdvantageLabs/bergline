@@ -9,19 +9,17 @@ on:
       - ready_for_review
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: pr-screenshots-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  publish:
+  capture:
     runs-on: ubuntu-latest
-    env:
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    permissions:
+      contents: read
     steps:
       - name: Checkout pull request
         uses: actions/checkout@v4
@@ -72,7 +70,6 @@ jobs:
           done
 
           CAPTURE_URL="http://127.0.0.1:4173/" \
-            NODE_PATH="$GITHUB_WORKSPACE/apps/web/node_modules" \
             node .github/scripts/capture-pr-screenshots.js \
             .github/pr-screenshots.json \
             pr-screenshots
@@ -84,8 +81,29 @@ jobs:
           path: pr-screenshots/
           if-no-files-found: error
 
+  publish:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    needs: capture
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-screenshots-${{ github.event.pull_request.number }}
+          path: pr-screenshots/
+
       - name: Publish embedded screenshots
-        if: github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
           set -euo pipefail
@@ -101,11 +119,13 @@ jobs:
             git -C "$worktree" rm -rf . >/dev/null 2>&1 || true
           fi
 
-          screenshot_dir="$worktree/pulls/$PR_NUMBER/$HEAD_SHA"
+          screenshot_root="$worktree/pulls/$PR_NUMBER"
+          screenshot_dir="$screenshot_root/$HEAD_SHA"
+          rm -rf "$screenshot_root"
           mkdir -p "$screenshot_dir"
-          cp pr-screenshots/*.png "$screenshot_dir/"
-          cp pr-screenshots/manifest.json "$screenshot_dir/"
-          cp pr-screenshots/comment.md "$screenshot_dir/"
+          cp -- pr-screenshots/*.png "$screenshot_dir/"
+          cp -- pr-screenshots/manifest.json "$screenshot_dir/"
+          cp -- pr-screenshots/comment.md "$screenshot_dir/"
 
           git -C "$worktree" config user.name "github-actions[bot]"
           git -C "$worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -120,7 +140,6 @@ jobs:
           git -C "$worktree" push origin HEAD:ci-screenshots
 
       - name: Comment screenshots
-        if: github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

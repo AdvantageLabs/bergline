@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+
+const repoRoot = path.resolve(__dirname, "../..");
+const { chromium } = require(path.join(repoRoot, "apps/web/node_modules/playwright"));
 
 const configPath = process.argv[2] || ".github/pr-screenshots.json";
 const outputDir = process.argv[3] || "pr-screenshots";
@@ -15,6 +17,14 @@ if (!captureUrl) {
 
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 fs.mkdirSync(outputDir, { recursive: true });
+
+function getSafeScenarioId(id) {
+  if (typeof id !== "string" || !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(id)) {
+    throw new Error(`Invalid screenshot scenario id: ${JSON.stringify(id)}`);
+  }
+
+  return id;
+}
 
 function buildUrl(baseUrl, routePath) {
   if (!routePath || routePath === "/") {
@@ -70,8 +80,9 @@ async function goToWithRetry(page, url) {
 
   for (const scenario of config) {
     const page = await browser.newPage({ viewport: scenario.viewport });
+    const scenarioId = getSafeScenarioId(scenario.id);
     const scenarioUrl = buildUrl(captureUrl, scenario.path);
-    const fileName = `${scenario.id}.png`;
+    const fileName = `${scenarioId}.png`;
     const filePath = path.join(outputDir, fileName);
 
     await goToWithRetry(page, scenarioUrl);
@@ -80,7 +91,7 @@ async function goToWithRetry(page, url) {
     await page.close();
 
     screenshots.push({
-      id: scenario.id,
+      id: scenarioId,
       label: scenario.label,
       path: fileName,
       url: scenarioUrl,
