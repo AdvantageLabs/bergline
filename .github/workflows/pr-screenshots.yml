@@ -20,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Checkout pull request
         uses: actions/checkout@v4
@@ -123,6 +126,12 @@ jobs:
           screenshot_dir="$screenshot_root/$HEAD_SHA"
           rm -rf "$screenshot_root"
           mkdir -p "$screenshot_dir"
+          if [ ! -f pr-screenshots/comment.md ]; then
+            {
+              echo "<!-- bergline-pr-screenshots -->"
+              echo "Screenshots artifact: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            } > pr-screenshots/comment.md
+          fi
           cp -- pr-screenshots/*.png "$screenshot_dir/"
           cp -- pr-screenshots/manifest.json "$screenshot_dir/"
           cp -- pr-screenshots/comment.md "$screenshot_dir/"
