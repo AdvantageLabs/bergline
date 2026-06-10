@@ -1,0 +1,25 @@
+{
+  "previewUrl": "https://AdvantageLabs.github.io/bergline/previews/pr-22/",
+  "screenshots": [
+    {
+      "id": "desktop",
+      "label": "Desktop",
+      "path": "desktop.png",
+      "url": "https://AdvantageLabs.github.io/bergline/previews/pr-22/",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "id": "mobile",
+      "label": "Mobile",
+      "path": "mobile.png",
+      "url": "https://AdvantageLabs.github.io/bergline/previews/pr-22/",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    }
+  ]
+}
