@@ -41,12 +41,21 @@ select {
   z-index: 0;
   width: 100vw;
   height: 100dvh;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 .scene-shell canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.scene-shell canvas:active {
+  cursor: grabbing;
 }
 
 .hud {
