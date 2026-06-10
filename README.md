@@ -67,6 +67,16 @@ npm run format         # fix formatting in place
 
 CI runs `lint`, `format:check`, and `build` on every PR via the `blocking-checks` workflow — a red check there means one of the three failed.
 
+## PR screenshots
+
+Every pull request also runs the `PR screenshots` workflow. It builds a static export of
+`apps/web`, captures desktop and mobile screenshots with Playwright, and posts a PR comment with
+embedded images.
+
+The screenshot scenarios live in `.github/pr-screenshots.json`. The embedded image files are
+published to the `ci-screenshots` branch so GitHub can render them directly in the PR comment; the
+same PNGs are also uploaded as a workflow artifact.
+
 Prettier config lives at the repo root (`.prettierrc`, `.prettierignore`) so it can cover future `apps/*` consistently. ESLint config stays in `apps/web/eslint.config.mjs` because the rules are Next.js-specific.
 
 ## Project structure (`apps/web`)
