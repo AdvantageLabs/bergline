@@ -28,6 +28,8 @@ nvm use 22
 
 ## Quickstart
 
+Bergline currently has one app in `apps/web`.
+
 From a fresh clone, run:
 
 ```bash
