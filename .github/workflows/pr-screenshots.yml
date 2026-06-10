@@ -1,0 +1,235 @@
+name: PR screenshots
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-screenshots-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build static screenshot target
+        working-directory: apps/web
+        env:
+          NEXT_OUTPUT: export
+        run: npm run build
+
+      - name: Install Playwright
+        working-directory: apps/web
+        run: npm exec playwright install --with-deps chromium
+
+      - name: Capture screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 -m http.server 4173 --directory apps/web/out >/tmp/bergline-screenshots.log 2>&1 &
+          serve_pid="$!"
+          trap 'kill "$serve_pid" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent "http://127.0.0.1:4173/" >/dev/null; then
+              break
+            fi
+
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/bergline-screenshots.log
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          CAPTURE_URL="http://127.0.0.1:4173/" \
+            node .github/scripts/capture-pr-screenshots.js \
+            .github/pr-screenshots.json \
+            pr-screenshots
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-screenshots-${{ github.event.pull_request.number }}
+          path: pr-screenshots/
+          if-no-files-found: error
+
+  publish:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    needs: capture
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-screenshots-${{ github.event.pull_request.number }}
+          path: pr-screenshots/
+
+      - name: Publish embedded screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          worktree="$(mktemp -d)"
+
+          if git ls-remote --exit-code --heads origin ci-screenshots >/dev/null 2>&1; then
+            git fetch origin ci-screenshots
+            git worktree add "$worktree" origin/ci-screenshots
+          else
+            git worktree add --detach "$worktree"
+            git -C "$worktree" switch --orphan ci-screenshots
+            git -C "$worktree" rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          screenshot_root="$worktree/pulls/$PR_NUMBER"
+          screenshot_dir="$screenshot_root/$HEAD_SHA"
+          rm -rf "$screenshot_root"
+          mkdir -p "$screenshot_dir"
+          if [ ! -f pr-screenshots/comment.md ]; then
+            {
+              echo "<!-- bergline-pr-screenshots -->"
+              echo "Screenshots artifact: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            } > pr-screenshots/comment.md
+          fi
+
+          if find pr-screenshots -type l -print -quit | grep -q .; then
+            echo "Refusing to publish screenshot artifact containing symlinks."
+            exit 1
+          fi
+
+          shopt -s nullglob
+          png_files=(pr-screenshots/*.png)
+
+          if [ "${#png_files[@]}" -eq 0 ]; then
+            echo "No PNG screenshots found to publish."
+            exit 1
+          fi
+
+          total_bytes=0
+          max_file_bytes=$((5 * 1024 * 1024))
+          max_total_bytes=$((12 * 1024 * 1024))
+
+          for artifact_file in "${png_files[@]}" pr-screenshots/manifest.json pr-screenshots/comment.md; do
+            if [ ! -f "$artifact_file" ] || [ -L "$artifact_file" ]; then
+              echo "Invalid screenshot artifact file: $artifact_file"
+              exit 1
+            fi
+
+            file_bytes="$(wc -c < "$artifact_file")"
+            if [ "$file_bytes" -gt "$max_file_bytes" ]; then
+              echo "Screenshot artifact file exceeds $max_file_bytes bytes: $artifact_file"
+              exit 1
+            fi
+
+            total_bytes=$((total_bytes + file_bytes))
+          done
+
+          if [ "$total_bytes" -gt "$max_total_bytes" ]; then
+            echo "Screenshot artifact exceeds $max_total_bytes bytes total."
+            exit 1
+          fi
+
+          cp -- "${png_files[@]}" "$screenshot_dir/"
+          cp -- pr-screenshots/manifest.json "$screenshot_dir/"
+          cp -- pr-screenshots/comment.md "$screenshot_dir/"
+
+          git -C "$worktree" config user.name "github-actions[bot]"
+          git -C "$worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$worktree" add -A
+
+          if git -C "$worktree" diff --cached --quiet; then
+            echo "No screenshot changes to publish."
+            exit 0
+          fi
+
+          git -C "$worktree" commit -m "Publish screenshots for PR #$PR_NUMBER"
+          git -C "$worktree" push origin HEAD:ci-screenshots
+
+      - name: Comment screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          body_file="$(mktemp)"
+          payload_file="$(mktemp)"
+          marker="<!-- bergline-pr-screenshots -->"
+
+          if [ -f pr-screenshots/comment.md ]; then
+            cp pr-screenshots/comment.md "$body_file"
+          else
+            {
+              echo "$marker"
+              echo "Screenshots artifact: $RUN_URL"
+            } > "$body_file"
+          fi
+
+          {
+            echo
+            echo "Workflow run: $RUN_URL"
+          } >> "$body_file"
+
+          jq -n --rawfile body "$body_file" '{ body: $body }' > "$payload_file"
+
+          comment_id="$(
+            gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- bergline-pr-screenshots -->"))) | .id' \
+              | tail -n 1
+          )"
+
+          if [ -n "$comment_id" ]; then
+            gh api \
+              --method PATCH \
+              "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" \
+              --input "$payload_file" \
+              >/dev/null
+          else
+            gh api \
+              --method POST \
+              "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              --input "$payload_file" \
+              >/dev/null
+          fi
