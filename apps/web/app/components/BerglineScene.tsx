@@ -31,11 +31,22 @@ const metersPerDegreeAtEquator = 111_320;
 const sceneScale = 0.028;
 const groundY = -0.82;
 const siteLineY = groundY + 0.005;
-const cameraTarget = new Vector3(-0.05, -0.6, 0.1);
+const cameraTarget = new Vector3(-1.55, -0.6, 2.75);
+const initialCameraPosition = new Vector3(-1.1, 4.75, 7.55);
+const initialCameraOffset = initialCameraPosition.clone().sub(cameraTarget);
 const endpointMarkerSize = 0.08 / 3;
 const origin = landmarkCoordinates.door;
 const originLatitudeRadians = (origin[1] * Math.PI) / 180;
 const mappedQueuePath = queuePath.map((coordinate) => projectCoordinate(coordinate));
+const mappedSitePoints = [
+  ...siteLines.flatMap((line) =>
+    line.coordinates.map((coordinate) => projectCoordinate(coordinate)),
+  ),
+  ...sitePolygons.flatMap((polygon) =>
+    polygon.coordinates.map((coordinate) => projectCoordinate(coordinate)),
+  ),
+];
+const cameraPanBounds = getCameraPanBounds([...mappedQueuePath, ...mappedSitePoints], 0.85);
 const queueProgress = 1;
 const visibleQueuePoints = getVisibleQueuePoints(mappedQueuePath, queueProgress);
 const visibleQueueNodes = mappedQueuePath.slice(
@@ -146,27 +157,58 @@ function pushTriangle(vertices: number[], a: ScenePoint, b: ScenePoint, c: Scene
   vertices.push(...a, ...b, ...c);
 }
 
-function PanControls() {
+function getCameraPanBounds(points: ScenePoint[], padding: number) {
+  const xValues = points.map(([x]) => x);
+  const zValues = points.map(([, , z]) => z);
+
+  return {
+    maxX: Math.max(...xValues) + padding,
+    maxZ: Math.max(...zValues) + padding,
+    minX: Math.min(...xValues) - padding,
+    minZ: Math.min(...zValues) - padding,
+  };
+}
+
+function SceneControls() {
   const { camera, gl, invalidate } = useThree();
 
   useEffect(() => {
     const controls = new OrbitControls(camera, gl.domElement);
 
     controls.enableRotate = false;
-    controls.enableZoom = false;
+    controls.enableZoom = true;
     controls.enablePan = true;
+    controls.minDistance = 3.4;
+    controls.maxDistance = 12;
+    controls.zoomSpeed = 0.85;
+    controls.panSpeed = 0.75;
     controls.mouseButtons.LEFT = MOUSE.PAN;
+    controls.mouseButtons.MIDDLE = MOUSE.DOLLY;
     controls.touches.ONE = TOUCH.PAN;
     controls.touches.TWO = TOUCH.DOLLY_PAN;
     controls.screenSpacePanning = true;
     controls.target.copy(cameraTarget);
-    controls.update();
     const requestFrame = () => invalidate();
+    const clampCameraTarget = () => {
+      const distance = camera.position.distanceTo(controls.target);
+      const offset = initialCameraOffset.clone().setLength(distance);
 
-    controls.addEventListener("change", requestFrame);
+      controls.target.set(
+        Math.min(Math.max(controls.target.x, cameraPanBounds.minX), cameraPanBounds.maxX),
+        cameraTarget.y,
+        Math.min(Math.max(controls.target.z, cameraPanBounds.minZ), cameraPanBounds.maxZ),
+      );
+      camera.position.copy(controls.target).add(offset);
+      requestFrame();
+    };
+
+    controls.update();
+    requestFrame();
+
+    controls.addEventListener("change", clampCameraTarget);
 
     return () => {
-      controls.removeEventListener("change", requestFrame);
+      controls.removeEventListener("change", clampCameraTarget);
       controls.dispose();
     };
   }, [camera, gl, invalidate]);
@@ -186,8 +228,8 @@ function QueueNodes({ visibleQueueNodes }: { visibleQueueNodes: ScenePoint[] }) 
 function SceneGeometry() {
   const queueGeometries = useMemo(
     () => ({
-      queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.008, 180),
-      queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.003, 180),
+      queueGlowGeometry: getPathGeometry(visibleQueuePoints, 0.018, 180),
+      queueCoreGeometry: getPathGeometry(visibleQueuePoints, 0.006, 180),
     }),
     [],
   );
@@ -268,7 +310,7 @@ function SceneGeometry() {
 export function BerglineScene() {
   return (
     <Canvas
-      camera={{ position: [0.55, 6.8, 6.7], fov: 43 }}
+      camera={{ position: initialCameraPosition, fov: 43 }}
       dpr={[1, 1.7]}
       frameloop="demand"
       gl={{ antialias: true }}
@@ -277,7 +319,7 @@ export function BerglineScene() {
       }}
     >
       <SceneGeometry />
-      <PanControls />
+      <SceneControls />
     </Canvas>
   );
 }
