@@ -42,12 +42,41 @@ const visibleQueueNodes = mappedQueuePath.slice(
   0,
   Math.max(2, Math.ceil(mappedQueuePath.length * Math.min(Math.max(queueProgress, 0), 1))),
 );
+const allSceneGroundPoints = [
+  ...mappedQueuePath,
+  ...siteLines.flatMap((line) =>
+    line.coordinates.map((coordinate) => projectCoordinate(coordinate)),
+  ),
+  ...sitePolygons.flatMap((polygon) =>
+    polygon.coordinates.map((coordinate) => projectCoordinate(coordinate)),
+  ),
+];
+const panTargetBounds = getPanTargetBounds(allSceneGroundPoints, 0.9);
+
 function projectCoordinate([longitude, latitude]: GeoCoordinate, y = groundY): ScenePoint {
   const eastMeters =
     (longitude - origin[0]) * metersPerDegreeAtEquator * Math.cos(originLatitudeRadians);
   const northMeters = (latitude - origin[1]) * metersPerDegreeAtEquator;
 
   return [eastMeters * sceneScale, y, -northMeters * sceneScale];
+}
+
+function getPanTargetBounds(points: ScenePoint[], padding: number) {
+  const xs = points.map(([x]) => x);
+  const zs = points.map(([, , z]) => z);
+
+  return {
+    maxX: Math.max(...xs) + padding,
+    maxY: cameraTarget.y + 0.35,
+    maxZ: Math.max(...zs) + padding,
+    minX: Math.min(...xs) - padding,
+    minY: cameraTarget.y - 0.45,
+    minZ: Math.min(...zs) - padding,
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function getVisibleQueuePoints(points: ScenePoint[], progress: number) {
@@ -146,22 +175,36 @@ function pushTriangle(vertices: number[], a: ScenePoint, b: ScenePoint, c: Scene
   vertices.push(...a, ...b, ...c);
 }
 
-function PanControls() {
+function SceneControls() {
   const { camera, gl, invalidate } = useThree();
 
   useEffect(() => {
     const controls = new OrbitControls(camera, gl.domElement);
 
     controls.enableRotate = false;
-    controls.enableZoom = false;
+    controls.enableZoom = true;
     controls.enablePan = true;
+    controls.minDistance = 3.2;
+    controls.maxDistance = 14;
+    controls.panSpeed = 0.85;
+    controls.zoomSpeed = 0.75;
     controls.mouseButtons.LEFT = MOUSE.PAN;
     controls.touches.ONE = TOUCH.PAN;
     controls.touches.TWO = TOUCH.DOLLY_PAN;
     controls.screenSpacePanning = true;
     controls.target.copy(cameraTarget);
     controls.update();
-    const requestFrame = () => invalidate();
+    const requestFrame = () => {
+      const previousTarget = controls.target.clone();
+
+      controls.target.set(
+        clamp(controls.target.x, panTargetBounds.minX, panTargetBounds.maxX),
+        clamp(controls.target.y, panTargetBounds.minY, panTargetBounds.maxY),
+        clamp(controls.target.z, panTargetBounds.minZ, panTargetBounds.maxZ),
+      );
+      camera.position.sub(previousTarget.sub(controls.target));
+      invalidate();
+    };
 
     controls.addEventListener("change", requestFrame);
 
@@ -277,7 +320,7 @@ export function BerglineScene() {
       }}
     >
       <SceneGeometry />
-      <PanControls />
+      <SceneControls />
     </Canvas>
   );
 }
